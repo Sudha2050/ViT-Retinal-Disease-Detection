@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retinal Disease Detection — Dual-Mode Diagnosis</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner" id="spinner"></div>
+        <div class="loading-text">Running inference...</div>
+        <div class="loading-step" id="loadingStep">Uploading image</div>
+    </div>
+
+    <header>
+        <a href="#" class="logo">
+            <div class="logo-mark">👁</div>
+            <div class="logo-text">Retinal<span>Diagnosis</span></div>
+        </a>
+        <nav class="header-nav">
+            <a href="#diagnosis">Diagnose</a>
+            <a href="#history">History</a>
+            <a href="#model">Model Info</a>
+        </nav>
+        <div class="status-pill">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="serverStatus">Checking...</span>
+        </div>
+    </header>
+
+    <div class="hero-strip">
+        <div>
+            <div class="hero-eyebrow">Dual-mode AI diagnosis system</div>
+            <h1 class="hero-title">Retinal disease detection<br>powered by <em>Vision Transformer</em></h1>
+            <p class="hero-desc">End-to-end AI diagnosing diabetic retinopathy from fundus photos and retinal diseases
+                from OCT scans.</p>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-val">83.3%</div>
+                <div class="hero-stat-lbl">DR accuracy</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-val">100%</div>
+                <div class="hero-stat-lbl">OCT val accuracy</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-val">0.93</div>
+                <div class="hero-stat-lbl">AUC-ROC</div>
+            </div>
+        </div>
+    </div>
+
+    <main class="main">
+
+        <!-- 1. MODE SELECTION -->
+        <section id="diagnosis" class="animate-in">
+            <div class="sec-eye">Select Modality</div>
+            <h2 class="sec-title">Choose diagnostic mode</h2>
+            <div class="mode-selector">
+                <div class="mode-card dr active" id="modeCardDR" onclick="setMode('dr')">
+                    <div class="mode-header">
+                        <div class="mode-icon">📷</div>
+                        <div class="mode-badge">Active</div>
+                    </div>
+                    <div class="mode-name">Fundus Photography (DR)</div>
+                    <div class="mode-desc">Screening for Diabetic Retinopathy grades using color retinal images.</div>
+                    <div class="mode-classes">
+                        <span class="mode-class-tag">No DR</span>
+                        <span class="mode-class-tag">Mild</span>
+                        <span class="mode-class-tag">Moderate</span>
+                        <span class="mode-class-tag">Severe</span>
+                        <span class="mode-class-tag">PDR</span>
+                    </div>
+                </div>
+                <div class="mode-card oct" id="modeCardOCT" onclick="setMode('oct')">
+                    <div class="mode-header">
+                        <div class="mode-icon">🧬</div>
+                        <div class="mode-badge">Ready</div>
+                    </div>
+                    <div class="mode-name">Optical Coherence Tomography (OCT)</div>
+                    <div class="mode-desc">Detecting CNV, DME, and Drusen from cross-sectional retinal scans.</div>
+                    <div class="mode-classes">
+                        <span class="mode-class-tag">CNV</span>
+                        <span class="mode-class-tag">DME</span>
+                        <span class="mode-class-tag">Drusen</span>
+                        <span class="mode-class-tag">Normal</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. DIAGNOSIS PANEL -->
+        <div class="diagnosis-panel">
+            <!-- Upload -->
+            <div class="upload-card animate-in" style="animation-delay: 0.1s">
+                <div class="card-header">
+                    <div class="card-title">Image Upload</div>
+                    <div class="card-sub" id="uploadCardSub">Fundus photo · JPG / PNG</div>
+                </div>
+                <div class="upload-body">
+                    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+                        ondragover="handleDrag(e)" ondragleave="handleDragLeave()" ondrop="handleDrop(e)">
+                        <span class="upload-icon">📤</span>
+                        <div class="upload-label">Drop image or click to browse</div>
+                        <div class="upload-hint">Max file size: 10MB</div>
+                    </div>
+                    <div class="preview-wrap" id="previewWrap">
+                        <img id="previewImg" src="">
+                        <div class="preview-overlay">
+                            <div class="preview-filename" id="previewFilename">image.jpg</div>
+                        </div>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+                    <div class="upload-actions">
+                        <button class="btn btn-ghost" onclick="resetAll()">Clear</button>
+                        <button class="btn btn-teal" id="analyseBtn" onclick="runAnalysis()" disabled>Analyse
+                            Image</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result -->
+            <div class="result-card animate-in" style="animation-delay: 0.2s">
+                <div class="card-header">
+                    <div class="card-title">Diagnostic Result</div>
+                    <div class="card-sub" id="resultCardSub">Awaiting image</div>
+                </div>
+                <div class="result-body">
+                    <div id="resultEmpty" class="result-empty">
+                        <div class="result-empty-icon">🩺</div>
+                        <div class="result-empty-text">Results will appear here<br>after analysis is complete.</div>
+                    </div>
+
+                    <div id="errorBox" style="display: none;"></div>
+
+                    <div id="diagnosisResult" class="diagnosis-result">
+                        <div class="dx-badge" id="dxBadge">
+                            <div class="dx-icon" id="dxIcon">✅</div>
+                            <div>
+                                <div class="dx-label" id="dxLabel">DR Grade</div>
+                                <div class="dx-name" id="dxName">No Diabetic Retinopathy</div>
+                                <div class="dx-conf" id="dxConf">Confidence: <span>99.8%</span></div>
+                            </div>
+                        </div>
+
+                        <div class="prob-section">
+                            <h4>Class Probabilities</h4>
+                            <div id="probBars">
+                                <!-- Bars added by JS -->
+                            </div>
+                        </div>
+
+                        <div id="warnBox"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. HISTORY -->
+        <section id="history" class="animate-in" style="animation-delay: 0.3s">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
+                <div>
+                    <div class="sec-eye">Session History</div>
+                    <h2 class="sec-title" style="margin-bottom: 0">Recent analyses</h2>
+                </div>
+                <div class="card-sub" style="margin-bottom: 5px;" id="historyCount">0 analyses</div>
+            </div>
+            <div class="history-section">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Mode</th>
+                            <th>Filename</th>
+                            <th>Result</th>
+                            <th>Confidence</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <tr>
+                            <td colspan="6"
+                                style="text-align:center; color: var(--ink3); padding: 32px; font-family: var(--mono); font-size: 12px">
+                                No analyses yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 4. MODEL INFO -->
+        <section id="model" class="animate-in" style="animation-delay: 0.4s">
+            <div class="sec-eye">Technical Performance</div>
+            <h2 class="sec-title">Model metrics</h2>
+            <div class="info-grid" style="grid-template-columns: 1fr;">
+                <!-- Performance Card -->
+                <div class="info-card">
+                    <div class="info-card-title">Classification Performance</div>
+                    <div class="perf-row">
+                        <div class="perf-label">DR Acc</div>
+                        <div class="perf-track">
+                            <div class="perf-fill dr" style="width: 0" data-w="83.3"></div>
+                        </div>
+                        <div class="perf-val">83.3%</div>
+                    </div>
+                    <div class="perf-row">
+                        <div class="perf-label">DR Kappa</div>
+                        <div class="perf-track">
+                            <div class="perf-fill dr" style="width: 0" data-w="81"></div>
+                        </div>
+                        <div class="perf-val">0.81</div>
+                    </div>
+                    <div class="perf-row">
+                        <div class="perf-label">OCT Acc</div>
+                        <div class="perf-track">
+                            <div class="perf-fill oct" style="width: 0" data-w="100"></div>
+                        </div>
+                        <div class="perf-val">100%</div>
+                    </div>
+                    <div class="perf-row">
+                        <div class="perf-label">AUC-ROC</div>
+                        <div class="perf-track">
+                            <div class="perf-fill oct" style="width: 0" data-w="93"></div>
+                        </div>
+                        <div class="perf-val">0.93</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="disclaimer">
+                <div class="disclaimer-icon">⚠️</div>
+                <div>
+                    <strong>Medical Disclaimer:</strong> This AI system is for research and screening assistance only.
+                    The results are generated by an automated vision transformer model and should not be considered a
+                    final medical diagnosis. Always consult with a qualified ophthalmologist for clinical
+                    interpretations.
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer style="margin-top: 80px;">
+        <div class="footer-logo">Retinal<span>Diagnosis</span></div>
+        <div>Retinal Disease Detection System</div>
+    </footer>
+
+    <script src="/static/js/script.js"></script>
+</body>
+
+</html>
